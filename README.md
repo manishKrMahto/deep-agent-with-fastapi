@@ -13,6 +13,8 @@ Production-style FastAPI backend for the PBM Deep Research Agent: multi-agent La
   ```
 - **Output validation**: The notebook `test_query.ipynb` validates agent answers by computing expected results with pandas against the same data, calling the API at `http://localhost:8000`, and comparing outputs. Results are marked as **correct** or **partial correct** in the notebook.
 - **Charts on request**: When the user asks to generate a chart or image (e.g. “create a chart for total rebate by region”), the agent can respond with both **text and a chart image** (base64 PNG in the response, rendered in the chat UI).
+- **Chart image persistence**: Chart images are stored in the database (`messages.chart_image_base64`) so they appear in chat history after refresh and in exported PDFs.
+- **PDF export**: Chat history can be exported to PDF with text and images, matching the frontend layout (bubbles, Markdown, charts). Use the **Export PDF** button in the chat header or `GET /api/sessions/{id}/export/pdf`.
 - **Knowledge DB from Django**: The PBM claims database was extracted from the original Django app and integrated into this FastAPI project as `data/knowledge.db`; the app uses it for Hybrid RAG SQL queries and chart data.
 
 ## Architecture
@@ -20,7 +22,7 @@ Production-style FastAPI backend for the PBM Deep Research Agent: multi-agent La
 - **API**: FastAPI with async endpoints, Pydantic schemas, dependency injection, OpenAPI at `/docs`.
 - **Agents**: Orchestrator → Router → Direct LLM or Hybrid RAG (SQL Agent → Guardrail → DB → Report → Formatter → Judge).
 - **State**: Single `AgentState` (LangGraph) with `query`, `route`, `sql_query`, `db_result`, `history`, `answer`, `sources`, `confidence`, `reasoning`, etc.
- - **DB**: SQLAlchemy ORM for chat (sessions/messages) + per-request data-retriever logs in `query_logs`; SQLite in `data/` by default, PostgreSQL via `DATABASE_URL`.
+- **DB**: SQLAlchemy ORM for chat (sessions/messages with optional `chart_image_base64`) + per-request data-retriever logs in `query_logs`; SQLite in `data/` by default, PostgreSQL via `DATABASE_URL`.
 - **Knowledge DB**: SQLite in `data/knowledge.db` for PBM claims (table `dataset`); schema introspection and read-only execution in services.
 
 ## Project structure
@@ -36,7 +38,7 @@ pbm_research_agent/          ← project root (you are here)
 │   ├── agents/             # router, direct_llm, sql, report, judge, formatter, doc_tool
 │   ├── graph/              # agent_state, langgraph_builder
 │   ├── db/                 # database, models, repository, migrations
-│   ├── services/           # chat_service, knowledge_db_service, knowledge_db_init
+│   ├── services/           # chat_service, pdf_export_service, knowledge_db_service, knowledge_db_init
 │   ├── scripts/            # init_knowledge_db
 │   ├── schemas/            # chat_schema (request/response)
 │   └── main.py
@@ -74,7 +76,15 @@ pbm_research_agent/          ← project root (you are here)
    # Optional: DATABASE_URL=postgresql://user:pass@host/db  (default: SQLite at data/chat.db)
    ```
 
-3. **Data**
+3. **Database migrations**
+
+   Run Alembic to apply migrations (e.g. add `chart_image_base64` to messages):
+
+   ```bash
+   alembic upgrade head
+   ```
+
+4. **Data**
 
    - **Chat DB**: Created automatically at `data/chat.db` on first run (or use `DATABASE_URL` for PostgreSQL).
    - **Knowledge DB**: The app expects `data/knowledge.db` for Hybrid RAG SQL queries.
@@ -141,9 +151,11 @@ Then open:
 | POST | `/api/chat/send/` | Legacy chat (body: `message`) used by the bundled UI |
 | POST | `/api/chat/send/stream` | SSE stream: agent steps live, then `done` with final answer |
 | GET | `/api/sessions` | List sessions |
-| GET | `/api/sessions/{id}/history` | Messages for session |
+| GET | `/api/sessions/{id}/history` | Messages for session (includes `chart_image_base64` when present) |
+| GET | `/api/sessions/{id}/export/pdf` | Download chat history as PDF (text + images) |
 | GET | `/api/chat/sessions/` | Legacy session list |
 | GET | `/api/chat/history/{id}/` | Legacy history |
+| GET | `/api/chat/history/{id}/export/pdf` | Legacy PDF export |
 | GET | `/api/logs` | Recent query logs (`query_logs`): query, SQL, response, latency |
 
 Response for chat includes: `answer`, `sources`, `confidence`, `reasoning`, `latency_ms`, `session_id`, and optionally `final_report` / `agent_message` for the UI.
@@ -151,7 +163,9 @@ Response for chat includes: `answer`, `sources`, `confidence`, `reasoning`, `lat
 The bundled chat UI (at `/`) uses `POST /api/chat/send/stream` to:
 
 - Show **live agent steps** via SSE (`event: step`, `data: {"step": "..."}`) while the LangGraph pipeline runs.
-- Then receive a final `event: done` with the full answer, provenance footer, and execution trace for that turn.
+- Then receive a final `event: done` with the full answer, provenance footer, chart image (if any), and execution trace for that turn.
+
+The UI also includes an **Export PDF** button (enabled when a session is selected) to download the chat history as a formatted PDF with text and chart images.
 
 ## Observability
 
@@ -194,6 +208,7 @@ pytest
 
 - **Chat**: Use `POST /api/chat` with `query` or keep using `POST /api/chat/send/` with `message`.
 - **Sessions**: Use `GET /api/sessions` or legacy `GET /api/chat/sessions/` and `GET /api/chat/history/{id}/`.
+- **PDF export**: Use `GET /api/sessions/{id}/export/pdf` or `GET /api/chat/history/{id}/export/pdf` to download chat history (text + chart images).
 - **DB**: Use default SQLite at `data/chat.db`, or set `DATABASE_URL` and run Alembic for PostgreSQL.
 - **Knowledge DB**: Use `data/knowledge.db`; copy or generate it from your claims data into this project’s `data/` folder.
 
