@@ -1,11 +1,12 @@
 """
 Session list and history endpoints.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.api.deps import get_db, get_message_repo, get_session_repo
 from app.db.repository import MessageRepository, SessionRepository
 from app.schemas.chat_schema import MessageItem, SessionItem
+from app.services.pdf_export_service import export_chat_history_to_pdf_bytes
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -48,6 +49,28 @@ async def get_history(
     return [MessageItem(**m) for m in messages]
 
 
+@router.get("/{session_id}/export/pdf")
+async def export_history_pdf(
+    session_id: str,
+    session_repo: SessionRepository = Depends(get_session_repo),
+    message_repo: MessageRepository = Depends(get_message_repo),
+):
+    """Download a PDF export of the chat history for a session."""
+    if not session_repo.exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+    messages = message_repo.get_messages(session_id)
+    pdf_bytes = export_chat_history_to_pdf_bytes(
+        messages,
+        title="Deep Research Agent",
+        session_id=session_id,
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="chat_{session_id}.pdf"'},
+    )
+
+
 @legacy_router.get("/sessions/", response_model=list[SessionItem])
 async def list_sessions_legacy(session_repo: SessionRepository = Depends(get_session_repo)):
     """Legacy: GET /api/chat/sessions/."""
@@ -66,3 +89,25 @@ async def get_history_legacy(
         raise HTTPException(status_code=404, detail="Session not found")
     messages = message_repo.get_messages(session_id)
     return [MessageItem(**m) for m in messages]
+
+
+@legacy_router.get("/history/{session_id}/export/pdf")
+async def export_history_pdf_legacy(
+    session_id: str,
+    session_repo: SessionRepository = Depends(get_session_repo),
+    message_repo: MessageRepository = Depends(get_message_repo),
+):
+    """Legacy: download PDF for GET /api/chat/history/<session_id>/export/pdf."""
+    if not session_repo.exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+    messages = message_repo.get_messages(session_id)
+    pdf_bytes = export_chat_history_to_pdf_bytes(
+        messages,
+        title="Deep Research Agent",
+        session_id=session_id,
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="chat_{session_id}.pdf"'},
+    )

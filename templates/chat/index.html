@@ -34,6 +34,7 @@
             </button>
           </div>
           <div class="flex items-center gap-2">
+            <button id="export-pdf-btn" type="button" class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" title="Export chat to PDF">Export PDF</button>
             <button id="new-chat-btn" class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-100">New Chat</button>
           </div>
         </header>
@@ -206,12 +207,13 @@
         const chatWindow = document.getElementById("chat-window");
         chatWindow.innerHTML = '<div id="chat-placeholder" class="text-center text-gray-400 text-base mt-8 hidden">Ask a question to start deep research.</div>';
         if (messages.length === 0) document.getElementById("chat-placeholder").classList.remove("hidden");
-        else messages.forEach((msg) => appendMessage(msg.role, msg.content));
+        else messages.forEach((msg) => appendMessage(msg.role, msg.content, msg.chart_image_base64));
         hideFinalReport();
       }
       async function loadHistory(sessionId) {
         if (!sessionId) return;
         currentSessionId = sessionId;
+        updateExportPdfButton();
         try {
           const res = await fetch(`/api/chat/history/${sessionId}/`);
           if (!res.ok) return;
@@ -256,6 +258,15 @@
           renderSessionList(data);
         } catch (e) { console.error("Failed to load sessions", e); }
       }
+      document.getElementById("export-pdf-btn").addEventListener("click", () => {
+        if (!currentSessionId) return;
+        window.location.href = `/api/chat/history/${currentSessionId}/export/pdf`;
+      });
+      document.getElementById("export-pdf-btn").disabled = !currentSessionId;
+      function updateExportPdfButton() {
+        const btn = document.getElementById("export-pdf-btn");
+        if (btn) btn.disabled = !currentSessionId;
+      }
       document.getElementById("toggle-history-btn").addEventListener("click", () => {
         const sidebar = document.getElementById("sidebar");
         const toggleBtn = document.getElementById("toggle-history-btn");
@@ -271,6 +282,7 @@
       });
       document.getElementById("new-chat-btn").addEventListener("click", () => {
         currentSessionId = null;
+        updateExportPdfButton();
         if (selectedSessionElement) { selectedSessionElement.classList.remove("bg-gray-100"); selectedSessionElement = null; }
         const chatWindow = document.getElementById("chat-window");
         chatWindow.innerHTML = '<div id="chat-placeholder" class="text-center text-gray-400 text-base mt-8">Ask a question to start deep research.</div>';
@@ -355,6 +367,7 @@
           removeAgentProgress();
           if (doneData) {
             currentSessionId = doneData.session_id;
+            updateExportPdfButton();
             const assistantContent = (doneData.final_report && doneData.final_report.trim() !== "") ? doneData.final_report : (doneData.agent_message || "");
             appendMessage("assistant", assistantContent, doneData.chart_image_base64);
             fetchSessions();
@@ -382,6 +395,7 @@
         }
       });
       fetchSessions();
+      updateExportPdfButton();
     </script>
   </body>
 </html>

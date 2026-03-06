@@ -48,7 +48,12 @@ def _process_chat(
     provenance_footer = f"\n\nSources: {sources_list}\nConfidence: {round(confidence_value, 3)}"
     final_report = (result.answer or "") + provenance_footer
     message_repo.add(session_id, "user", query)
-    message_repo.add(session_id, "assistant", final_report)
+    message_repo.add(
+        session_id,
+        "assistant",
+        final_report,
+        chart_image_base64=result.chart_image_base64,
+    )
     last_preview = (query[:80] + "...") if len(query) > 80 else query
     session_repo.update_last_message(session_id, last_preview)
 
@@ -145,7 +150,12 @@ def _stream_agent_events(
             message_repo = MessageRepository(db)
             log_repo = QueryLogRepository(db)
             message_repo.add(session_id, "user", query)
-            message_repo.add(session_id, "assistant", final_report)
+            message_repo.add(
+                session_id,
+                "assistant",
+                final_report,
+                chart_image_base64=result.chart_image_base64,
+            )
             last_preview = (query[:80] + "...") if len(query) > 80 else query
             session_repo.update_last_message(session_id, last_preview)
             try:

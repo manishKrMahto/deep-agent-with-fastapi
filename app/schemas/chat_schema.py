@@ -53,6 +53,7 @@ class MessageItem(BaseModel):
 
     role: str
     content: str
+    chart_image_base64: str | None = Field(default=None, description="Base64 PNG chart if assistant message included one")
 
 
 class QueryLogItem(BaseModel):

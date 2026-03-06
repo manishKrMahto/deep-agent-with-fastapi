@@ -63,17 +63,36 @@ class MessageRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def add(self, session_id: str, role: str, content: str) -> None:
-        """Append a message to a session."""
-        msg = Message(session_id=session_id, role=role, content=content)
+    def add(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        *,
+        chart_image_base64: str | None = None,
+    ) -> None:
+        """Append a message to a session. chart_image_base64 is stored for assistant messages with charts."""
+        msg = Message(
+            session_id=session_id,
+            role=role,
+            content=content,
+            chart_image_base64=chart_image_base64,
+        )
         self._db.add(msg)
         self._db.flush()
 
     def get_messages(self, session_id: str) -> list[dict]:
-        """Return messages for a session: [{ role, content }, ...]."""
+        """Return messages for a session: [{ role, content, chart_image_base64? }, ...]."""
         stmt = select(Message).where(Message.session_id == session_id).order_by(Message.id)
         rows = self._db.execute(stmt).scalars().all()
-        return [{"role": r.role, "content": r.content} for r in rows]
+        return [
+            {
+                "role": r.role,
+                "content": r.content,
+                "chart_image_base64": getattr(r, "chart_image_base64", None),
+            }
+            for r in rows
+        ]
 
 
 class QueryLogRepository:
