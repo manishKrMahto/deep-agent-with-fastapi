@@ -1,0 +1,16 @@
+# Run from project root (pbm_research_agent): docker-compose up --build
+# Set OPENAI_API_KEY in .env or environment
+version: "3.9"
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - LOG_LEVEL=INFO
+      # Mount data dir for SQLite (optional; use volume for persistence)
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
