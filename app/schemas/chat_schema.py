@@ -32,6 +32,9 @@ class ChatResponse(BaseModel):
     reasoning: str = Field(default="", description="Judge reasoning")
     latency_ms: int | None = Field(default=None, description="Processing time in milliseconds")
     session_id: str | None = Field(default=None, description="Session ID (new or existing)")
+    trace: List[str] = Field(default_factory=list, description="Execution steps taken by the agent")
+    # Chart image when user asked for a chart and DB returned data (base64 PNG)
+    chart_image_base64: str | None = Field(default=None, description="Base64-encoded PNG chart if requested")
     # Backward compatibility with existing chat UI
     final_report: str | None = Field(default=None, description="Answer with provenance footer")
     agent_message: str | None = Field(default=None, description="Same as final_report")

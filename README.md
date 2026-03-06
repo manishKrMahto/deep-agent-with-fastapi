@@ -2,18 +2,12 @@
 
 Production-style FastAPI backend for the PBM Deep Research Agent: multi-agent LangGraph Hybrid RAG with session persistence, observability, and enterprise structure.
 
-**Project root**: this directory (`pbm_research_agent`). All commands below assume you are in this directory:
-
-```bash
-cd pbm_research_agent
-```
-
 ## Architecture
 
 - **API**: FastAPI with async endpoints, Pydantic schemas, dependency injection, OpenAPI at `/docs`.
 - **Agents**: Orchestrator → Router → Direct LLM or Hybrid RAG (SQL Agent → Guardrail → DB → Report → Formatter → Judge).
 - **State**: Single `AgentState` (LangGraph) with `query`, `route`, `sql_query`, `db_result`, `history`, `answer`, `sources`, `confidence`, `reasoning`, etc.
-- **DB**: SQLAlchemy ORM for chat (sessions/messages) + per-request logs in `agent_run_logs`; SQLite in `data/` by default, PostgreSQL via `DATABASE_URL`.
+ - **DB**: SQLAlchemy ORM for chat (sessions/messages) + per-request data-retriever logs in `query_logs`; SQLite in `data/` by default, PostgreSQL via `DATABASE_URL`.
 - **Knowledge DB**: SQLite in `data/knowledge.db` for PBM claims (table `dataset`); schema introspection and read-only execution in services.
 
 ## Project structure
@@ -102,6 +96,43 @@ Then open:
 - **Chat UI**: http://127.0.0.1:8000/
 - **OpenAPI**: http://127.0.0.1:8000/docs
 
+### Quick commands
+
+- **Manually (re)build the knowledge base**:
+
+  ```bash
+  python -m app.scripts.init_knowledge_db --recreate
+  ```
+
+- **Run FastAPI locally**:
+
+  ```bash
+  uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+  ```
+
+- **View recent SQL queries and logs**:
+
+  - `http://127.0.0.1:8000/api/logs?limit=20`
+
+### Example queries
+
+- **Text + image (chart) examples**  
+  These will run the Hybrid RAG + chart node and display a chart alongside the narrative:
+
+  - `Create a chart for how many claims were filled each month?`
+  - `Can you create a chart for the total rebate for each region?`
+
+- **Text-only examples**  
+  These return text-only (no chart) and exercise the SQL + reporting pipeline:
+
+  - `How has the usage of Erlotinib changed over time?`
+  - `Can you show the total rebate for each region?` — correct
+  - `Can you show the total copay amount for each drug in each region?` — correct
+  - `What is the total pharmacy spending in each region?` — correct
+  - `Which drugs generate the highest total cost for the health plan?` — correct
+  - `Which therapeutic classes contribute the most to overall drug spending?` — correct
+  - `Which pharmacy types (Retail, Mail Order, Specialty) process the most prescriptions?` — partial correct
+
 ## API
 
 | Method | Path | Description |
@@ -109,19 +140,35 @@ Then open:
 | GET | `/health` | Liveness/readiness |
 | POST | `/api/chat` | Send message (body: `query`) — session is managed by the backend |
 | POST | `/api/chat/send/` | Legacy chat (body: `message`) used by the bundled UI |
+| POST | `/api/chat/send/stream` | SSE stream: agent steps live, then `done` with final answer |
 | GET | `/api/sessions` | List sessions |
 | GET | `/api/sessions/{id}/history` | Messages for session |
 | GET | `/api/chat/sessions/` | Legacy session list |
 | GET | `/api/chat/history/{id}/` | Legacy history |
+| GET | `/api/logs` | Recent query logs (`query_logs`): query, SQL, response, latency |
 
 Response for chat includes: `answer`, `sources`, `confidence`, `reasoning`, `latency_ms`, `session_id`, and optionally `final_report` / `agent_message` for the UI.
+
+The bundled chat UI (at `/`) uses `POST /api/chat/send/stream` to:
+
+- Show **live agent steps** via SSE (`event: step`, `data: {"step": "..."}`) while the LangGraph pipeline runs.
+- Then receive a final `event: done` with the full answer, provenance footer, and execution trace for that turn.
 
 ## Observability
 
 - **Request ID**: `X-Request-ID` on request/response; set automatically if missing.
 - **Latency**: `X-Response-Time-Ms` and structured logs with `request_id` and `latency_ms`.
 - **Logging**: Configured in `app.core.logging_config`; level via `LOG_LEVEL`.
-- **Per-request agent logs**: `data/chat.db` contains an `agent_run_logs` table with one row per agent run (`user_query`, `route`, `sql_query`, `db_row_count`, `sources`, `confidence`, `latency_ms`, `reasoning`) for audit and debugging.
+- **Per-request query logs**: `data/chat.db` contains a `query_logs` table with one row per agent run (`created_at`, `session_id`, `user_query`, `sql_query`, `response_text`, `latency_ms`) for audit and debugging. These are exposed via `GET /api/logs`.
+
+## LangGraph pipeline diagram
+
+- A static workflow image of the LangGraph pipeline lives at `langgraph_pipeline_workflow.png` in the project root.
+- You can regenerate it (requires `graphviz` installed locally and the `graphviz` Python package) with:
+
+  ```bash
+  python -m scripts.render_langgraph_workflow
+  ```
 
 ## Docker
 

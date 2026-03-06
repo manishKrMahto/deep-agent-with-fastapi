@@ -33,7 +33,9 @@ Rules:
 Return ONLY the SQL query, nothing else.
 """
     sql = llm.invoke(prompt).content.strip()
-    return {"sql_query": sql}
+    trace = list(state.get("trace", []))
+    trace.append("Generated candidate SQL query from the user question.")
+    return {"sql_query": sql, "trace": trace}
 
 
 def _sql_guardrail(sql: str, schema_text: str) -> None:
@@ -52,16 +54,20 @@ def sql_guardrail_node(state: AgentState) -> dict[str, Any]:
     schema_text = introspect_schema()
     upper = raw_sql.upper()
     select_idx = upper.find("SELECT")
+    trace = list(state.get("trace", []))
     if select_idx == -1:
-        return {"sql_query": "", "db_result": []}
+        trace.append("No valid SELECT found; skipping database query.")
+        return {"sql_query": "", "db_result": [], "trace": trace}
     cleaned = raw_sql[select_idx:].strip()
     if ";" in cleaned:
         cleaned = cleaned.split(";", 1)[0].strip()
     try:
         _sql_guardrail(cleaned, schema_text)
     except ValueError:
-        return {"sql_query": "", "db_result": []}
-    return {"sql_query": cleaned}
+        trace.append("SQL failed safety checks; skipping database query.")
+        return {"sql_query": "", "db_result": [], "trace": trace}
+    trace.append("SQL passed safety guardrail checks.")
+    return {"sql_query": cleaned, "trace": trace}
 
 
 def sql_execute_node(state: AgentState) -> dict[str, Any]:
@@ -70,12 +76,15 @@ def sql_execute_node(state: AgentState) -> dict[str, Any]:
     retry_count = state.get("retry_count", 0)
     llm = get_core_llm()
     schema_text = introspect_schema()
+    trace = list(state.get("trace", []))
     try:
         rows = execute_sql(sql)
-        return {"db_result": rows, "retry_count": retry_count}
+        trace.append(f"Executed SQL against database and retrieved {len(rows)} rows.")
+        return {"db_result": rows, "retry_count": retry_count, "trace": trace}
     except Exception as e:
         if retry_count >= 1:
-            raise
+            trace.append("SQL execution failed again after repair; aborting.")
+            return {"db_result": [], "retry_count": retry_count, "trace": trace}
         repair_prompt = f"""
 The following SQL query failed when executed against a SQLite database:
 
@@ -99,4 +108,12 @@ Return ONLY the corrected SQL, nothing else.
 """
         repaired_sql = llm.invoke(repair_prompt).content.strip()
         rows = execute_sql(repaired_sql)
-        return {"db_result": rows, "sql_query": repaired_sql, "retry_count": retry_count + 1}
+        trace.append(
+            f"Initial SQL failed; generated repaired SQL and retrieved {len(rows)} rows."
+        )
+        return {
+            "db_result": rows,
+            "sql_query": repaired_sql,
+            "retry_count": retry_count + 1,
+            "trace": trace,
+        }

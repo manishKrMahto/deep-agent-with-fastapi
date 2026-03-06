@@ -12,9 +12,15 @@ def report_agent(state: AgentState) -> dict:
     query = state["query"]
     db_result = state.get("db_result") or []
     doc_text = state.get("doc_text") or ""
+    has_chart = bool(state.get("chart_image_base64"))
     preview_rows = json.dumps(db_result[:20], indent=2, default=str)
     doc_snippet = doc_text[:2000] if doc_text else ""
     sql_query = (state.get("sql_query") or "").strip()
+    chart_note = (
+        "\n\nA visualization (chart) has been generated from this data and will be attached to the response. In your narrative, briefly refer to the chart where relevant (e.g. 'The chart below shows...')."
+        if has_chart
+        else ""
+    )
     llm = get_core_llm()
     prompt = f"""
 You are a PBM clinical analytics AI.
@@ -43,6 +49,7 @@ Write a thorough analytical narrative that:
 - Connects any clinical guidance from the document (if provided) to the observed or hypothetical claims.
 - Explicitly calls out important caveats and data gaps.
 - Uses plain paragraphs and inline lists; do NOT worry about headings, bullets, or final presentation.
+{chart_note}
 
 This output is an intermediate analysis that will be passed to a separate formatter.
 Do not add any sign-off, author name, or date footer.
@@ -56,4 +63,6 @@ Do not add any sign-off, author name, or date footer.
         sources.add("database")
     if doc_snippet:
         sources.add("doc")
-    return {"answer": answer, "sources": list(sorted(sources))}
+    trace = list(state.get("trace", []))
+    trace.append("Generated analytical narrative from database (and document) context.")
+    return {"answer": answer, "sources": list(sorted(sources)), "trace": trace}

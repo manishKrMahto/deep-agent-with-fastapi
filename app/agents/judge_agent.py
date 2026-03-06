@@ -56,7 +56,9 @@ Context (JSON):
     except Exception:
         confidence = 0.6
         reasoning = f"Failed to parse judge JSON. Raw: {raw!r}"
-    return {"confidence": confidence, "reasoning": reasoning}
+    trace = list(state.get("trace", []))
+    trace.append("Evaluation agent scored answer confidence and explained reasoning.")
+    return {"confidence": confidence, "reasoning": reasoning, "trace": trace}
 
 
 def route_after_judge(state: AgentState) -> str:

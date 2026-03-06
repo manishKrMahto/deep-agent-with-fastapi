@@ -9,7 +9,7 @@ from app.services.knowledge_db_service import introspect_schema
 
 
 def router_agent(state: AgentState) -> dict[str, Any]:
-    """Route query to DIRECT_LLM or HYBRID_RAG based on LLM decision."""
+    """Route query to DIRECT_LLM or HYBRID_RAG; detect if user asked to create a chart."""
     query = state["query"]
     schema_text = introspect_schema()
     llm = get_core_llm()
@@ -22,20 +22,37 @@ User query:
 Database schema (SQLite):
 {schema_text}
 
-Decide whether this query should be answered:
-- DIRECT_LLM: simple conversational or general question where SQL is not needed
-- HYBRID_RAG: question that clearly benefits from querying the database
+Tasks:
+1) Decide whether this query should be answered via:
+   - DIRECT_LLM: simple conversational or general question where SQL is not needed
+   - HYBRID_RAG: question that clearly benefits from querying the database
 
-Return ONLY one word: DIRECT_LLM or HYBRID_RAG.
+2) Decide if the user explicitly asked to create/plot/visualize a chart or graph (e.g. "create a chart", "plot", "visualize", "show me a graph for...").
+
+Respond with exactly two lines:
+Line 1: DIRECT_LLM or HYBRID_RAG
+Line 2: CHART or NO_CHART
 """
-    route = llm.invoke(prompt).content.strip().upper()
+    response = llm.invoke(prompt).content.strip().upper()
+    lines = [ln.strip() for ln in response.splitlines() if ln.strip()]
+    route = lines[0] if lines else "DIRECT_LLM"
     if route not in ("DIRECT_LLM", "HYBRID_RAG"):
         route = "DIRECT_LLM"
+    create_chart = len(lines) > 1 and lines[1] == "CHART"
+    trace = list(state.get("trace", []))
+    if route == "DIRECT_LLM":
+        trace.append("Routing agent chose Direct LLM path (no database needed).")
+    else:
+        trace.append("Routing agent chose Hybrid RAG path (will query database).")
+    if create_chart:
+        trace.append("User requested a chart; chart will be generated if database returns data.")
     return {
         "route": route,
+        "asked_to_create_chart": create_chart,
         "retry_count": state.get("retry_count", 0),
         "sources": state.get("sources", []),
         "node_route": route,
+        "trace": trace,
     }
 
 

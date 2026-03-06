@@ -45,10 +45,12 @@ def _scrape_web_page(url: str) -> str:
 
 def doc_tool_node(state: AgentState) -> dict:
     """If query contains a URL, fetch and store text in doc_text."""
+    trace = list(state.get("trace", []))
+    trace.append("Checked query for external documents or URLs.")
     query = state.get("query", "")
     url_match = re.search(r"https?://\S+", query)
     if not url_match:
-        return {}
+        return {"trace": trace}
     url = url_match.group(0).strip().rstrip('"\'')
     try:
         if url.lower().endswith(".pdf"):
@@ -57,4 +59,7 @@ def doc_tool_node(state: AgentState) -> dict:
             text = _scrape_web_page(url)
     except Exception:
         text = ""
-    return {"doc_text": text}
+        trace.append("Tried to fetch external document but failed; continuing without doc context.")
+        return {"doc_text": text, "trace": trace}
+    trace.append("Fetched external document and added it as context.")
+    return {"doc_text": text, "trace": trace}

@@ -67,11 +67,14 @@ Respond with either:
         for kw in ["join", "group by", "sum(", "average", "count(", "trend", "time series"]
     )
     confidence = 0.9 if simple else 0.75
+    trace = list(state.get("trace", []))
+    trace.append("Answered using Direct LLM path without querying the database.")
     return {
         "answer": answer,
         "sources": ["model"],
         "confidence": confidence,
         "reasoning": "Direct LLM path with heuristic high confidence.",
+        "trace": trace,
     }
 
 

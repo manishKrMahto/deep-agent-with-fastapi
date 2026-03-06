@@ -20,12 +20,16 @@ class AgentState(TypedDict, total=False):
     reasoning: str
     retry_count: int
     escalated_to_research: bool
+    # Chart: when user asks to create a chart and we have db_result
+    asked_to_create_chart: bool
+    chart_image_base64: Optional[str]
     # Observability fields
     node_route: str  # "DIRECT_LLM" or "HYBRID_RAG"
-    sql_query: str
     # Short-term memory: recent messages in the session (excluding current turn).
     # Shape: [{ "role": "user"|"assistant", "content": "..." }, ...]
     history: list[dict[str, str]]
+    # Human-readable execution trace for UI (one message per step).
+    trace: list[str]
 
 
 @dataclass
@@ -39,3 +43,5 @@ class AgentOutput:
     route: str
     sql_query: str
     db_row_count: int
+    trace: list[str]
+    chart_image_base64: Optional[str] = None

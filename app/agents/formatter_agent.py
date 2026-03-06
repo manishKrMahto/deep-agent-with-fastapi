@@ -47,4 +47,6 @@ def formatter_agent(state: AgentState) -> dict:
     prompt = FORMAT_PROMPT.format(analysis=raw_analysis)
     formatted = llm.invoke(prompt).content.strip()
     formatted = _normalize_report_markdown(formatted)
-    return {"answer": formatted}
+    trace = list(state.get("trace", []))
+    trace.append("Formatted analysis into executive-friendly Markdown.")
+    return {"answer": formatted, "trace": trace}

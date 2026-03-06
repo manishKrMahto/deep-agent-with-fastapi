@@ -51,6 +51,7 @@
     <script>
       let currentSessionId = null;
       let selectedSessionElement = null;
+      let agentProgressIntervalId = null;
       function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -77,7 +78,7 @@
         if (idx === -1) return { report: content, footer: "" };
         return { report: content.slice(0, idx).trim(), footer: content.slice(idx).trim() };
       }
-      function appendMessage(role, content) {
+      function appendMessage(role, content, chartImageBase64) {
         const chatWindow = document.getElementById("chat-window");
         hidePlaceholder();
         const wrapper = document.createElement("div");
@@ -96,6 +97,16 @@
           inner.className = "chat-prose prose prose-sm max-w-none text-gray-900 break-words";
           inner.innerHTML = parseMarkdown(report || content);
           bubble.appendChild(inner);
+          if (chartImageBase64) {
+            const imgWrapper = document.createElement("div");
+            imgWrapper.className = "mt-3 border border-gray-300 rounded-lg overflow-hidden bg-white";
+            const img = document.createElement("img");
+            img.src = "data:image/png;base64," + chartImageBase64;
+            img.alt = "Generated chart";
+            img.className = "w-full h-auto block";
+            imgWrapper.appendChild(img);
+            bubble.appendChild(imgWrapper);
+          }
           if (footer) {
             const footerEl = document.createElement("div");
             footerEl.className = "mt-3 pt-2 border-t border-gray-300 text-xs text-gray-500";
@@ -108,22 +119,84 @@
         chatWindow.appendChild(wrapper);
         chatWindow.scrollTop = chatWindow.scrollHeight;
       }
-      function showResearchingDots() {
+      function showAgentProgress() {
         hidePlaceholder();
         const chatWindow = document.getElementById("chat-window");
+        const existing = document.getElementById("agent-progress-indicator");
+        if (existing) existing.remove();
+
         const wrapper = document.createElement("div");
         wrapper.className = "flex w-full justify-start";
-        wrapper.id = "researching-indicator";
+        wrapper.id = "agent-progress-indicator";
+
         const bubble = document.createElement("div");
-        bubble.className = "max-w-[75%] rounded-2xl px-4 py-3 text-base bg-gray-100 text-gray-500 rounded-bl-sm flex items-center gap-1";
-        bubble.innerHTML = 'Researching <span class="flex gap-0.5"><span class="animate-bounce" style="animation-delay: 0ms">.</span><span class="animate-bounce" style="animation-delay: 150ms">.</span><span class="animate-bounce" style="animation-delay: 300ms">.</span></span>';
+        bubble.className =
+          "max-w-[75%] rounded-2xl px-4 py-3 text-sm bg-gray-100 text-gray-700 rounded-bl-sm";
+
+        const title = document.createElement("div");
+        title.className = "font-medium mb-1 flex items-center gap-2";
+        title.innerHTML = 'Agent is working... <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>';
+        bubble.appendChild(title);
+
+        const list = document.createElement("ul");
+        list.id = "agent-steps-list";
+        list.className = "mt-1 space-y-0.5 text-xs";
+        bubble.appendChild(list);
+
         wrapper.appendChild(bubble);
         chatWindow.appendChild(wrapper);
         chatWindow.scrollTop = chatWindow.scrollHeight;
       }
-      function removeResearchingDots() {
-        const el = document.getElementById("researching-indicator");
+      function appendAgentStep(stepText) {
+        const list = document.getElementById("agent-steps-list");
+        if (!list) return;
+        const li = document.createElement("li");
+        li.className = "flex items-center gap-2 text-gray-800";
+        const dot = document.createElement("span");
+        dot.className = "inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0";
+        const text = document.createElement("span");
+        text.textContent = stepText;
+        li.appendChild(dot);
+        li.appendChild(text);
+        list.appendChild(li);
+        const chatWindow = document.getElementById("chat-window");
+        if (chatWindow) chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+      function removeAgentProgress() {
+        if (agentProgressIntervalId) {
+          window.clearInterval(agentProgressIntervalId);
+          agentProgressIntervalId = null;
+        }
+        const el = document.getElementById("agent-progress-indicator");
         if (el) el.remove();
+      }
+      function renderAgentTrace(trace) {
+        if (!Array.isArray(trace) || trace.length === 0) return;
+        const chatWindow = document.getElementById("chat-window");
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex w-full justify-start";
+
+        const bubble = document.createElement("div");
+        bubble.className =
+          "max-w-[75%] rounded-2xl px-4 py-3 text-xs bg-gray-50 text-gray-700 border border-gray-200 rounded-bl-sm";
+
+        const title = document.createElement("div");
+        title.className = "font-semibold mb-1";
+        title.textContent = "How the agent answered:";
+        bubble.appendChild(title);
+
+        const list = document.createElement("ol");
+        list.className = "list-decimal list-inside space-y-0.5";
+        trace.forEach((step) => {
+          const li = document.createElement("li");
+          li.textContent = step;
+          list.appendChild(li);
+        });
+
+        bubble.appendChild(list);
+        wrapper.appendChild(bubble);
+        chatWindow.appendChild(wrapper);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
       }
       function hideFinalReport() {
         const container = document.getElementById("final-report-container");
@@ -214,26 +287,83 @@
         input.style.height = "auto";
         const sendButton = document.getElementById("send-button");
         sendButton.disabled = true;
-        showResearchingDots();
+        showAgentProgress();
         try {
-          const res = await fetch("/api/chat/send/", {
+          const res = await fetch("/api/chat/send/stream", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: message, session_id: currentSessionId }),
           });
-          removeResearchingDots();
           if (!res.ok) {
+            removeAgentProgress();
             appendMessage("assistant", "Sorry, something went wrong while processing your request.");
-          } else {
-            const data = await res.json();
-            currentSessionId = data.session_id;
-            const assistantContent = (data.final_report && data.final_report.trim() !== "") ? data.final_report : (data.agent_message || "");
-            appendMessage("assistant", assistantContent);
+            sendButton.disabled = false;
+            return;
+          }
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let doneData = null;
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split("\n\n");
+            buffer = parts.pop() || "";
+            for (const part of parts) {
+              const lines = part.split("\n");
+              let eventType = "message";
+              let dataStr = "";
+              for (const line of lines) {
+                if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+                else if (line.startsWith("data: ")) dataStr = line.slice(6);
+              }
+              if (!dataStr) continue;
+              try {
+                const data = JSON.parse(dataStr);
+                if (eventType === "step" && data.step) {
+                  appendAgentStep(data.step);
+                } else if (eventType === "done") {
+                  doneData = data;
+                } else if (eventType === "error") {
+                  removeAgentProgress();
+                  appendMessage("assistant", "Error: " + (data.detail || "Something went wrong."));
+                }
+              } catch (parseErr) {
+                if (eventType === "error") {
+                  removeAgentProgress();
+                  appendMessage("assistant", "Something went wrong.");
+                }
+              }
+            }
+          }
+          if (buffer.trim()) {
+            const lines = buffer.split("\n");
+            let eventType = "message";
+            let dataStr = "";
+            for (const line of lines) {
+              if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+              else if (line.startsWith("data: ")) dataStr = line.slice(6);
+            }
+            if (dataStr) {
+              try {
+                const data = JSON.parse(dataStr);
+                if (eventType === "done") doneData = data;
+              } catch (_) {}
+            }
+          }
+          removeAgentProgress();
+          if (doneData) {
+            currentSessionId = doneData.session_id;
+            const assistantContent = (doneData.final_report && doneData.final_report.trim() !== "") ? doneData.final_report : (doneData.agent_message || "");
+            appendMessage("assistant", assistantContent, doneData.chart_image_base64);
             fetchSessions();
+          } else {
+            appendMessage("assistant", "Sorry, the response could not be completed.");
           }
         } catch (e) {
           console.error("Send failed", e);
-          removeResearchingDots();
+          removeAgentProgress();
           appendMessage("assistant", "Network error. Please try again in a moment.");
         } finally {
           sendButton.disabled = false;
