@@ -2,6 +2,19 @@
 
 Production-style FastAPI backend for the PBM Deep Research Agent: multi-agent LangGraph Hybrid RAG with session persistence, observability, and enterprise structure.
 
+## Features
+
+- **Django → FastAPI**: Migrated from Django to FastAPI with a frontend page that consumes the API (chat UI at `/`, sessions, history, streaming).
+- **Memory persistence**: The agent keeps short-term memory of past conversations in the session; recent turns are passed into the pipeline so it can reference prior context.
+- **Live streaming of agent steps**: Backend state is streamed to the frontend so users see which steps are running in real time. The flow is dynamically driven by LangGraph, not static:
+  ```
+  User Query → FastAPI Endpoint → LangGraph Execution
+       → emit agent_step events → SSE Stream → Frontend UI updates live → Final Answer displayed
+  ```
+- **Output validation**: The notebook `test_query.ipynb` validates agent answers by computing expected results with pandas against the same data, calling the API at `http://localhost:8000`, and comparing outputs. Results are marked as **correct** or **partial correct** in the notebook.
+- **Charts on request**: When the user asks to generate a chart or image (e.g. “create a chart for total rebate by region”), the agent can respond with both **text and a chart image** (base64 PNG in the response, rendered in the chat UI).
+- **Knowledge DB from Django**: The PBM claims database was extracted from the original Django app and integrated into this FastAPI project as `data/knowledge.db`; the app uses it for Hybrid RAG SQL queries and chart data.
+
 ## Architecture
 
 - **API**: FastAPI with async endpoints, Pydantic schemas, dependency injection, OpenAPI at `/docs`.
