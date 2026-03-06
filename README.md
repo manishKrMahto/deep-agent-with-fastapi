@@ -55,7 +55,8 @@ pbm_research_agent/          ← project root (you are here)
 1. **Virtual env and install**
 
    ```bash
-   cd pbm_research_agent
+   git clone https://github.com/manishKrMahto/deep-agent-with-fastapi.git
+   cd deep-agent-with-fastapi
    python -m venv .venv
    .venv\Scripts\activate   # Windows
    # source .venv/bin/activate   # macOS/Linux
@@ -64,7 +65,7 @@ pbm_research_agent/          ← project root (you are here)
 
 2. **Environment**
 
-   Create `.env` in the project root (`pbm_research_agent/.env`):
+   Create `.env` or rename `.env.example` in the project root (`.env`):
 
    ```env
    OPENAI_API_KEY=your_key
@@ -88,17 +89,9 @@ pbm_research_agent/          ← project root (you are here)
        - `AUTO_INIT_KNOWLEDGE_DB=true|false`
        - `KNOWLEDGE_CSV_PATH=path/to/pbm_claims_full.csv`
 
-4. **Migrations (optional)**
-
-   From project root:
-
-   ```bash
-   alembic upgrade head
-   ```
-
 ## Run
 
-From the project root (`pbm_research_agent`):
+From the project root (`deep-agent-with-fastapi`):
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -108,14 +101,6 @@ Then open:
 
 - **Chat UI**: http://127.0.0.1:8000/
 - **OpenAPI**: http://127.0.0.1:8000/docs
-
-### Quick commands
-
-- **Manually (re)build the knowledge base**:
-
-  ```bash
-  python -m app.scripts.init_knowledge_db --recreate
-  ```
 
 - **Run FastAPI locally**:
 
@@ -134,6 +119,7 @@ Then open:
 
   - `Create a chart for how many claims were filled each month?`
   - `Can you create a chart for the total rebate for each region?`
+  - `create an chart for How has the usage of Erlotinib changed over time, month wise?`
 
 - **Text-only examples**  
   These return text-only (no chart) and exercise the SQL + reporting pipeline:
@@ -176,12 +162,15 @@ The bundled chat UI (at `/`) uses `POST /api/chat/send/stream` to:
 
 ## LangGraph pipeline diagram
 
-- A static workflow image of the LangGraph pipeline lives at `langgraph_pipeline_workflow.png` in the project root.
-- You can regenerate it (requires `graphviz` installed locally and the `graphviz` Python package) with:
+The pipeline has two reference diagrams: **before** and **after** adding the chart-showing tool.
 
-  ```bash
-  python -m scripts.render_langgraph_workflow
-  ```
+**Before** (without chart generation): the flow went from Router to either Direct LLM or Hybrid RAG (SQL Agent → Guardrail → Execute → Report → Formatter → Judge).
+
+![LangGraph pipeline — before chart tool](langgraph_pipeline_workflow_old.png)
+
+**After adding the chart showing tool**: when the user asks for a chart and the database returns rows, execution goes through a **CHART** node (generate chart from DB results) before **REPORT**. The decision “Chart requested? & DB rows?” branches to CHART then REPORT, or straight to REPORT.
+
+![LangGraph pipeline — after chart tool](langgraph_pipeline_workflow_updated.png)
 
 ## Docker
 
