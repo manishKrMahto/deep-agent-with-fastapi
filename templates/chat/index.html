@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Deep Research Agent</title>
+    <title>OptumRx Deep Research Agent</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -14,40 +14,268 @@
       .chat-prose p { margin: 0.5rem 0; }
     </style>
   </head>
-  <body class="bg-white text-gray-900 text-base">
+  <body class="bg-white text-slate-900 text-base">
     <div class="h-screen flex overflow-hidden">
-      <aside id="sidebar" class="hidden md:flex md:flex-col w-72 border-r border-gray-200 bg-gray-50">
-        <div class="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h1 class="text-xl font-semibold">Deep Research Agent</h1>
+      <aside id="sidebar" class="hidden md:flex md:flex-col w-72 border-r border-orange-900 bg-orange-50">
+        <div class="px-4 py-4 border-b border-orange-900 flex items-center justify-between bg-white">
+          <div class="flex items-center gap-2">
+            <img
+              src="/assets/d__Manish_fastapi-agent_pbm_research_agent_optumrx2.png"
+              alt="OptumRx"
+              class="h-8 w-auto"
+            />
+          </div>
+        </div>
+        <div class="px-4 py-3 border-b border-orange-200 bg-white">
+          <button
+            id="new-chat-btn"
+            class="w-full text-sm px-3 py-2 rounded-full bg-orange-700 text-white hover:bg-orange-800 shadow-sm"
+          >
+            New Chat
+          </button>
         </div>
         <div class="flex-1 overflow-y-auto" id="session-list">
-          <div class="p-4 text-sm text-gray-500">Conversation history will appear here.</div>
+          <div class="p-4 text-sm text-orange-900/80">Conversation history will appear here.</div>
         </div>
       </aside>
       <main class="flex-1 flex flex-col">
-        <header class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-2">
+        <header class="px-4 py-3 border-b border-orange-900 flex items-center justify-between gap-2 bg-white/95 backdrop-blur shadow-sm">
           <div class="flex items-center gap-2">
-            <button id="toggle-history-btn" type="button" class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900" title="Toggle conversation list">
+            <button
+              id="toggle-history-btn"
+              type="button"
+              class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-orange-600 text-orange-700 hover:bg-orange-50 hover:text-orange-900 bg-white"
+              title="Toggle conversation list"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="w-4 h-4">
                 <path d="M4 6h16M4 12h10M4 18h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
               </svg>
             </button>
           </div>
-          <div class="flex items-center gap-2">
-            <button id="export-pdf-btn" type="button" class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" title="Export chat to PDF">Export PDF</button>
-            <button id="new-chat-btn" class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-100">New Chat</button>
+          <div class="flex items-center gap-3">
+            <button
+              id="export-pdf-btn"
+              type="button"
+              class="text-sm px-3 py-1.5 rounded-full border border-orange-600 text-orange-800 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+              title="Export chat to PDF"
+            >
+              Export PDF
+            </button>
+            <button
+              id="login-btn"
+              type="button"
+              class="text-sm px-3 py-1.5 rounded-full border border-orange-600 text-orange-800 hover:bg-orange-50 bg-white"
+            >
+              Login
+            </button>
+            <button
+              id="signup-btn"
+              type="button"
+              class="text-sm px-3 py-1.5 rounded-full bg-orange-700 text-white hover:bg-orange-800 shadow-sm"
+            >
+              Sign up
+            </button>
+            <button
+              id="user-menu-btn"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-full bg-orange-50 px-2 py-1 hover:bg-orange-100 border border-orange-200"
+            >
+              <span id="user-name-label" class="text-xs text-orange-900 hidden sm:inline"></span>
+              <span
+                id="user-avatar"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-700 text-white text-sm font-semibold"
+              >
+                G
+              </span>
+            </button>
           </div>
         </header>
         <section id="chat-window" class="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4 bg-white">
-          <div id="chat-placeholder" class="text-center text-gray-400 text-base mt-8">Ask a question to start deep research.</div>
+          <div id="chat-placeholder" class="text-center text-slate-400 text-base mt-8">Ask a question to start deep research.</div>
         </section>
-        <section class="border-t border-gray-200 bg-white px-4 py-3">
+        <section class="border-t border-orange-900 bg-white px-4 py-3">
           <form id="chat-form" class="max-w-3xl mx-auto flex items-end gap-2">
-            <textarea id="message-input" rows="1" class="flex-1 resize-none rounded-2xl border border-gray-300 px-3 py-2 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 max-h-64 overflow-y-auto" placeholder="Type your question here... (Shift+Enter for new line)"></textarea>
-            <button type="submit" id="send-button" class="inline-flex items-center justify-center rounded-full bg-emerald-600 text-white px-5 py-2.5 text-base font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Send</button>
+            <textarea
+              id="message-input"
+              rows="1"
+              class="flex-1 resize-none rounded-2xl border border-orange-300 bg-white text-slate-900 px-3 py-2 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 max-h-64 overflow-y-auto placeholder:text-slate-400"
+              placeholder="Type your question here... (Shift+Enter for new line)"
+            ></textarea>
+            <button
+              type="submit"
+              id="send-button"
+              class="inline-flex items-center justify-center rounded-full bg-orange-700 text-white px-5 py-2.5 text-base font-medium hover:bg-orange-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              Send
+            </button>
           </form>
         </section>
       </main>
+
+      <!-- Auth and profile modals -->
+      <div
+        id="signup-modal"
+        class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden"
+      >
+        <div class="w-full max-w-md rounded-2xl bg-white shadow-xl border border-orange-200">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-orange-100">
+            <h2 class="text-lg font-semibold text-orange-900">Create your account</h2>
+            <button
+              type="button"
+              class="text-slate-500 hover:text-slate-800"
+              data-close-modal="signup-modal"
+            >
+              ✕
+            </button>
+          </div>
+          <form id="signup-form" class="px-6 py-4 space-y-4">
+            <div class="space-y-1">
+              <label for="signup-full-name" class="text-sm font-medium text-slate-700">Full name</label>
+              <input
+                id="signup-full-name"
+                type="text"
+                class="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="Jane Doe"
+                required
+              />
+            </div>
+            <div class="space-y-1">
+              <label for="signup-email" class="text-sm font-medium text-slate-700">Email address</label>
+              <input
+                id="signup-email"
+                type="email"
+                class="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+            <div class="space-y-1">
+              <label for="signup-password" class="text-sm font-medium text-slate-700">Password</label>
+              <input
+                id="signup-password"
+                type="password"
+                class="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="Enter a secure password"
+                required
+              />
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 text-sm rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50"
+                data-close-modal="signup-modal"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-1.5 text-sm rounded-full bg-orange-700 text-white hover:bg-orange-800"
+              >
+                Sign up
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div
+        id="login-modal"
+        class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden"
+      >
+        <div class="w-full max-w-md rounded-2xl bg-white shadow-xl border border-orange-200">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-orange-100">
+            <h2 class="text-lg font-semibold text-orange-900">Log in</h2>
+            <button
+              type="button"
+              class="text-slate-500 hover:text-slate-800"
+              data-close-modal="login-modal"
+            >
+              ✕
+            </button>
+          </div>
+          <form id="login-form" class="px-6 py-4 space-y-4">
+            <div class="space-y-1">
+              <label for="login-email" class="text-sm font-medium text-slate-700">Email address</label>
+              <input
+                id="login-email"
+                type="email"
+                class="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+            <div class="space-y-1">
+              <label for="login-password" class="text-sm font-medium text-slate-700">Password</label>
+              <input
+                id="login-password"
+                type="password"
+                class="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder="Your password"
+                required
+              />
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 text-sm rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50"
+                data-close-modal="login-modal"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-1.5 text-sm rounded-full bg-orange-700 text-white hover:bg-orange-800"
+              >
+                Log in
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div
+        id="profile-modal"
+        class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden"
+      >
+        <div class="w-full max-w-md rounded-2xl bg-white shadow-xl border border-orange-200">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-orange-100">
+            <h2 class="text-lg font-semibold text-orange-900">Edit profile</h2>
+            <button
+              type="button"
+              class="text-slate-500 hover:text-slate-800"
+              data-close-modal="profile-modal"
+            >
+              ✕
+            </button>
+          </div>
+          <form id="profile-form" class="px-6 py-4 space-y-4">
+            <div class="space-y-1">
+              <label for="profile-name-input" class="text-sm font-medium text-slate-700">Display name</label>
+              <input
+                id="profile-name-input"
+                type="text"
+                class="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                required
+              />
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 text-sm rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50"
+                data-close-modal="profile-modal"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-1.5 text-sm rounded-full bg-orange-700 text-white hover:bg-orange-800"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
     <script>
       let currentSessionId = null;
@@ -88,11 +316,11 @@
         const bubble = document.createElement("div");
         bubble.className = "max-w-[75%] rounded-2xl px-4 py-3 text-base overflow-hidden";
         if (role === "user") {
-          bubble.classList.add("bg-emerald-600", "text-white", "rounded-br-sm");
+          bubble.classList.add("bg-orange-700", "text-white", "rounded-br-sm");
           bubble.style.whiteSpace = "pre-wrap";
           bubble.textContent = content;
         } else {
-          bubble.classList.add("bg-gray-100", "text-gray-900", "rounded-bl-sm");
+            bubble.classList.add("bg-orange-50", "text-slate-900", "rounded-bl-sm");
           const { report, footer } = splitReportAndFooter(content);
           const inner = document.createElement("div");
           inner.className = "chat-prose prose prose-sm max-w-none text-gray-900 break-words";
@@ -100,7 +328,7 @@
           bubble.appendChild(inner);
           if (chartImageBase64) {
             const imgWrapper = document.createElement("div");
-            imgWrapper.className = "mt-3 border border-gray-300 rounded-lg overflow-hidden bg-white";
+            imgWrapper.className = "mt-3 border border-orange-200 rounded-lg overflow-hidden bg-white";
             const img = document.createElement("img");
             img.src = "data:image/png;base64," + chartImageBase64;
             img.alt = "Generated chart";
@@ -110,7 +338,7 @@
           }
           if (footer) {
             const footerEl = document.createElement("div");
-            footerEl.className = "mt-3 pt-2 border-t border-gray-300 text-xs text-gray-500";
+            footerEl.className = "mt-3 pt-2 border-t border-orange-200 text-xs text-slate-500";
             footerEl.style.whiteSpace = "pre-wrap";
             footerEl.textContent = footer;
             bubble.appendChild(footerEl);
@@ -132,11 +360,12 @@
 
         const bubble = document.createElement("div");
         bubble.className =
-          "max-w-[75%] rounded-2xl px-4 py-3 text-sm bg-gray-100 text-gray-700 rounded-bl-sm";
+          "max-w-[75%] rounded-2xl px-4 py-3 text-sm bg-white text-slate-900 rounded-bl-sm border border-orange-200";
 
         const title = document.createElement("div");
-        title.className = "font-medium mb-1 flex items-center gap-2";
-        title.innerHTML = 'Agent is working... <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>';
+        title.className = "font-medium mb-1 flex items-center gap-2 text-orange-800";
+        title.innerHTML =
+          'Agent is working... <span class="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>';
         bubble.appendChild(title);
 
         const list = document.createElement("ul");
@@ -152,9 +381,9 @@
         const list = document.getElementById("agent-steps-list");
         if (!list) return;
         const li = document.createElement("li");
-        li.className = "flex items-center gap-2 text-gray-800";
+        li.className = "flex items-center gap-2 text-slate-700";
         const dot = document.createElement("span");
-        dot.className = "inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0";
+        dot.className = "inline-block w-2 h-2 rounded-full bg-orange-500 flex-shrink-0";
         const text = document.createElement("span");
         text.textContent = stepText;
         li.appendChild(dot);
@@ -179,10 +408,10 @@
 
         const bubble = document.createElement("div");
         bubble.className =
-          "max-w-[75%] rounded-2xl px-4 py-3 text-xs bg-gray-50 text-gray-700 border border-gray-200 rounded-bl-sm";
+          "max-w-[75%] rounded-2xl px-4 py-3 text-xs bg-white text-slate-900 border border-orange-200 rounded-bl-sm";
 
         const title = document.createElement("div");
-        title.className = "font-semibold mb-1";
+        title.className = "font-semibold mb-1 text-orange-800";
         title.textContent = "How the agent answered:";
         bubble.appendChild(title);
 
@@ -205,7 +434,7 @@
       }
       function renderHistory(messages) {
         const chatWindow = document.getElementById("chat-window");
-        chatWindow.innerHTML = '<div id="chat-placeholder" class="text-center text-gray-400 text-base mt-8 hidden">Ask a question to start deep research.</div>';
+        chatWindow.innerHTML = '<div id="chat-placeholder" class="text-center text-slate-400 text-base mt-8 hidden">Ask a question to start deep research.</div>';
         if (messages.length === 0) document.getElementById("chat-placeholder").classList.remove("hidden");
         else messages.forEach((msg) => appendMessage(msg.role, msg.content, msg.chart_image_base64));
         hideFinalReport();
@@ -225,25 +454,25 @@
         const listEl = document.getElementById("session-list");
         listEl.innerHTML = "";
         if (!sessions.length) {
-          listEl.innerHTML = '<div class="p-4 text-sm text-gray-500">No conversations yet.</div>';
+          listEl.innerHTML = '<div class="p-4 text-sm text-orange-900/80">No conversations yet.</div>';
           return;
         }
         sessions.forEach((session) => {
           const item = document.createElement("button");
           item.type = "button";
           item.dataset.sessionId = session.id;
-          item.className = "w-full text-left px-4 py-3 text-sm border-b border-gray-100 hover:bg-gray-100 transition-colors";
+          item.className = "w-full text-left px-4 py-3 text-sm border-b border-orange-100 hover:bg-orange-50 transition-colors text-orange-900 bg-white";
           const title = document.createElement("div");
           title.className = "font-medium text-gray-900 truncate";
           title.textContent = session.last_message || "New conversation";
           const meta = document.createElement("div");
-          meta.className = "text-xs text-gray-500 mt-0.5";
+          meta.className = "text-xs text-orange-700/80 mt-0.5";
           meta.textContent = new Date(session.created_at).toLocaleString();
           item.appendChild(title);
           item.appendChild(meta);
           item.addEventListener("click", () => {
-            if (selectedSessionElement) selectedSessionElement.classList.remove("bg-gray-100");
-            item.classList.add("bg-gray-100");
+            if (selectedSessionElement) selectedSessionElement.classList.remove("bg-orange-50");
+            item.classList.add("bg-orange-50");
             selectedSessionElement = item;
             loadHistory(session.id);
           });
@@ -274,10 +503,16 @@
         const isVisible = sidebar.classList.contains("md:flex");
         if (isVisible) {
           sidebar.classList.remove("md:flex"); sidebar.classList.add("md:hidden");
-          if (toggleBtn) { toggleBtn.classList.remove("bg-gray-900", "text-white"); toggleBtn.classList.add("border-gray-300", "text-gray-600"); }
+          if (toggleBtn) {
+            toggleBtn.classList.remove("bg-orange-900", "text-white");
+            toggleBtn.classList.add("border-orange-600", "text-orange-700", "bg-white");
+          }
         } else {
           sidebar.classList.remove("md:hidden"); sidebar.classList.add("md:flex");
-          if (toggleBtn) { toggleBtn.classList.remove("border-gray-300", "text-gray-600"); toggleBtn.classList.add("bg-gray-900", "text-white"); }
+          if (toggleBtn) {
+            toggleBtn.classList.remove("bg-white");
+            toggleBtn.classList.add("bg-orange-900", "text-white");
+          }
         }
       });
       document.getElementById("new-chat-btn").addEventListener("click", () => {
@@ -285,7 +520,7 @@
         updateExportPdfButton();
         if (selectedSessionElement) { selectedSessionElement.classList.remove("bg-gray-100"); selectedSessionElement = null; }
         const chatWindow = document.getElementById("chat-window");
-        chatWindow.innerHTML = '<div id="chat-placeholder" class="text-center text-gray-400 text-base mt-8">Ask a question to start deep research.</div>';
+        chatWindow.innerHTML = '<div id="chat-placeholder" class="text-center text-slate-400 text-base mt-8">Ask a question to start deep research.</div>';
         hideFinalReport();
       });
       document.getElementById("chat-form").addEventListener("submit", async (event) => {
@@ -394,6 +629,155 @@
           document.getElementById("chat-form").dispatchEvent(new Event("submit"));
         }
       });
+
+      // Simple frontend user state (name + initial) backed by localStorage.
+      let currentUser = null;
+      function loadUserFromStorage() {
+        try {
+          const raw = window.localStorage.getItem("pbm_user");
+          if (!raw) return;
+          currentUser = JSON.parse(raw);
+        } catch (e) {
+          console.error("Failed to load user from storage", e);
+        }
+      }
+      function saveUserToStorage() {
+        try {
+          if (currentUser) {
+            window.localStorage.setItem("pbm_user", JSON.stringify(currentUser));
+          } else {
+            window.localStorage.removeItem("pbm_user");
+          }
+        } catch (e) {
+          console.error("Failed to save user to storage", e);
+        }
+      }
+      function updateUserUI() {
+        const avatarEl = document.getElementById("user-avatar");
+        const nameEl = document.getElementById("user-name-label");
+        const name = (currentUser && currentUser.full_name) ? currentUser.full_name : "Guest";
+        const initial = name.trim().charAt(0).toUpperCase() || "G";
+        if (avatarEl) avatarEl.textContent = initial;
+        if (nameEl) nameEl.textContent = name;
+      }
+
+      loadUserFromStorage();
+      updateUserUI();
+
+      function openModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove("hidden");
+      }
+      function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.add("hidden");
+      }
+
+      document.getElementById("user-menu-btn").addEventListener("click", () => {
+        const nameInput = document.getElementById("profile-name-input");
+        nameInput.value = (currentUser && currentUser.full_name) ? currentUser.full_name : "Guest";
+        openModal("profile-modal");
+      });
+
+      async function callAuthEndpoint(path, payload, method = "POST") {
+        try {
+          const res = await fetch(path, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const detail = data.detail || "Request failed";
+            alert(detail);
+            return null;
+          }
+          return data;
+        } catch (e) {
+          console.error("Auth request failed", e);
+          alert("Network error, please try again.");
+          return null;
+        }
+      }
+
+      document.getElementById("signup-btn").addEventListener("click", () => {
+        (document.getElementById("signup-form")).reset();
+        openModal("signup-modal");
+      });
+
+      document.getElementById("login-btn").addEventListener("click", () => {
+        (document.getElementById("login-form")).reset();
+        openModal("login-modal");
+      });
+
+      document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const target = btn.getAttribute("data-close-modal");
+          if (target) closeModal(target);
+        });
+      });
+
+      document.getElementById("signup-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const fullName = document.getElementById("signup-full-name").value.trim();
+        const email = document.getElementById("signup-email").value.trim();
+        const password = document.getElementById("signup-password").value.trim();
+        if (!fullName || !email || !password) return;
+        const user = await callAuthEndpoint("/api/auth/signup", {
+          full_name: fullName,
+          email,
+          password,
+        });
+        if (user) {
+          currentUser = user;
+          saveUserToStorage();
+          updateUserUI();
+          closeModal("signup-modal");
+        }
+      });
+
+      document.getElementById("login-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = document.getElementById("login-email").value.trim();
+        const password = document.getElementById("login-password").value.trim();
+        if (!email || !password) return;
+        const user = await callAuthEndpoint("/api/auth/login", {
+          email,
+          password,
+        });
+        if (user) {
+          currentUser = user;
+          saveUserToStorage();
+          updateUserUI();
+          closeModal("login-modal");
+        }
+      });
+
+      document.getElementById("profile-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const fullName = document.getElementById("profile-name-input").value.trim();
+        if (!fullName) return;
+        if (!currentUser || !currentUser.id) {
+          currentUser = currentUser || {};
+          currentUser.full_name = fullName;
+          saveUserToStorage();
+          updateUserUI();
+          closeModal("profile-modal");
+          return;
+        }
+        const updated = await callAuthEndpoint(
+          "/api/auth/profile/name",
+          { id: currentUser.id, full_name: fullName },
+          "PUT",
+        );
+        if (updated) {
+          currentUser = updated;
+          saveUserToStorage();
+          updateUserUI();
+          closeModal("profile-modal");
+        }
+      });
+
       fetchSessions();
       updateExportPdfButton();
     </script>

@@ -88,8 +88,14 @@ app.include_router(api_router)
 
 
 # Serve chat UI: static assets and index
-_templates_dir = Path(__file__).resolve().parent.parent / "templates"
+_base_dir = Path(__file__).resolve().parent.parent
+_templates_dir = _base_dir / "templates"
+_assets_dir = _base_dir / "assets"
 _chat_index = _templates_dir / "chat" / "index.html"
+
+# Mount /assets for logo and other static files (if folder exists)
+if _assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
 
 
 @app.get("/")

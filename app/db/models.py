@@ -66,3 +66,15 @@ class QueryLog(Base):
     response_text: Mapped[str] = mapped_column(Text, nullable=False)
 
     latency_ms: Mapped[int | None] = mapped_column(nullable=True)
+
+
+class User(Base):
+    """Simple user model for email/password auth."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

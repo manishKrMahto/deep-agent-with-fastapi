@@ -31,7 +31,7 @@ Production-style FastAPI backend for the PBM Deep Research Agent: multi-agent La
 pbm_research_agent/          ← project root (you are here)
 ├── app/
 │   ├── api/
-│   │   ├── routes/         # chat, health, sessions
+│   │   ├── routes/         # chat, health, sessions, auth
 │   │   ├── deps.py         # get_db, repositories
 │   │   └── router.py
 │   ├── core/               # config, logging, security
@@ -44,7 +44,6 @@ pbm_research_agent/          ← project root (you are here)
 │   └── main.py
 ├── data/                   # chat.db, knowledge.db, optional CSV for claims
 ├── templates/chat/         # Chat UI
-├── tests/
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
@@ -89,7 +88,7 @@ pbm_research_agent/          ← project root (you are here)
    - **Chat DB**: Created automatically at `data/chat.db` on first run (or use `DATABASE_URL` for PostgreSQL).
    - **Knowledge DB**: The app expects `data/knowledge.db` for Hybrid RAG SQL queries.
      - If `pbm_claims_full.csv` exists in the project root, the app will **auto-create** `data/knowledge.db` on startup (table: `dataset`).
-     - You can also build it manually:
+     - Optional You can also build it manually:
 
        ```bash
        python -m app.scripts.init_knowledge_db --recreate
@@ -147,6 +146,9 @@ Then open:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Liveness/readiness |
+| POST | `/api/auth/signup` | Create a user with email, full name, and password (case-insensitive unique email) |
+| POST | `/api/auth/login` | Log in with email and password; returns basic user info |
+| PUT | `/api/auth/profile/name` | Update a user's full name (body: `id`, `full_name`) |
 | POST | `/api/chat` | Send message (body: `query`) — session is managed by the backend |
 | POST | `/api/chat/send/` | Legacy chat (body: `message`) used by the bundled UI |
 | POST | `/api/chat/send/stream` | SSE stream: agent steps live, then `done` with final answer |
@@ -195,14 +197,6 @@ docker-compose up --build
 ```
 
 API at http://localhost:8000. The compose file mounts `./data` for persistent SQLite; ensure `data/knowledge.db` exists if you use Hybrid RAG.
-
-## Tests
-
-From project root:
-
-```bash
-pytest
-```
 
 ## Migration from Flask/Django app
 
