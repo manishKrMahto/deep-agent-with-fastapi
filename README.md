@@ -88,13 +88,13 @@ pbm_research_agent/          ← project root (you are here)
    - **Chat DB**: Created automatically at `data/chat.db` on first run (or use `DATABASE_URL` for PostgreSQL).
    - **Knowledge DB**: The app expects `data/knowledge.db` for Hybrid RAG SQL queries.
      - If `pbm_claims_full.csv` exists in the project root, the app will **auto-create** `data/knowledge.db` on startup (table: `dataset`).
-     - Optional You can also build it manually:
+     - **Optional** You can also build it manually:
 
        ```bash
        python -m app.scripts.init_knowledge_db --recreate
        ```
 
-     - Optional env overrides:
+     - **Optional** env overrides:
        - `AUTO_INIT_KNOWLEDGE_DB=true|false`
        - `KNOWLEDGE_CSV_PATH=path/to/pbm_claims_full.csv`
 
