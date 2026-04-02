@@ -5,6 +5,7 @@ uvicorn[standard]>=0.32.0
 # Pydantic and config
 pydantic>=2.0
 pydantic-settings>=2.0
+pydantic[email]
 
 # Database
 sqlalchemy>=2.0
