@@ -93,7 +93,7 @@ _templates_dir = _base_dir / "templates"
 _assets_dir = _base_dir / "assets"
 _chat_index = _templates_dir / "chat" / "index.html"
 
-# Mount /assets for logo and other static files (if folder exists)
+# Mount /assets for optional static files (if folder exists)
 if _assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
 
